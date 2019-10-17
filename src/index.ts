@@ -9,12 +9,38 @@ class App {
   private name: string = '';
   // 该服务是否需要登录权限访问
   private auth: boolean = true;
-  // http服务器
-  private server: any;
-  // SocketIO服务器
+  // 传入的http服务器
+  private server?: any;
+  // 创建的SocketIO服务器
   private io?: SocketIO.Server;
-  // 应用命名空间
+  // 创建的应用命名空间
   private namespc?: SocketIO.Namespace;
+  // 请求的Session
+  private session: string = '';
+  // 当前请求的登录玩家信息
+  private player?: any;
+
+  public get Name(): string {
+    return this.name;
+  }
+  public get Auth(): boolean {
+    return this.auth;
+  }
+  public get Server(): any {
+    return this.server;
+  }
+  public get IO(): SocketIO.Server {
+    return this.io as SocketIO.Server;
+  }
+  public get NameSpace(): SocketIO.Namespace {
+    return this.namespc as SocketIO.Namespace;
+  }
+  public get Session(): string {
+    return this.session;
+  }
+  public get Player(): any {
+    return this.player;
+  }
 
   // 从文本之中反序列化Cookie并读取指定键值
   private readCookie(text: string, key: string): string {
@@ -28,9 +54,9 @@ class App {
   // 函数会被传入连接到客户端的Socket
   private async Connection(socket: SocketIO.Socket): Promise<void> {
     // 从Cookie之中读取Session
-    const session = this.readCookie(socket.request.headers.cookie, 'session');
+    this.session = this.readCookie(socket.request.headers.cookie, 'session');
     // 利用获取的Session读取登录玩家信息
-    const player = await Session.Get(session);
+    this.player = await Session.Get(this.session);
   }
 
   // 监听（启动服务）
