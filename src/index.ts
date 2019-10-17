@@ -33,8 +33,16 @@ class App {
     const player = await Session.Get(session);
   }
 
-  public Listen(): void {
-
+  // 监听（启动服务）
+  public Listen(
+    port: number,
+    opts: SocketIO.ServerOptions | undefined
+  ): void {
+    if (this.io) {
+      (this.io as SocketIO.Server).listen(port, opts);
+    } else {
+      throw new Error('SocketIO服务没有初始化');
+    }
   }
 
   // 构造函数
