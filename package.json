@@ -11,6 +11,6 @@
   "license": "MIT",
   "private": false,
   "dependencies": {
-    "blockrpg-core": "^1.5.9"
+    "blockrpg-core": "^1.6.0"
   }
 }
