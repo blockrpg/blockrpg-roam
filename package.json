@@ -1,0 +1,16 @@
+{
+  "name": "blockrpg-roam",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node built/index.js"
+  },
+  "repository": "https://github.com/wrule/blockrpg-roam",
+  "author": "鸡毛 <shihao.gu@perfma.com>",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "blockrpg-core": "^1.5.9"
+  }
+}
