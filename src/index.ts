@@ -2,6 +2,7 @@
 import SocketIO from 'socket.io';
 import Auth from 'blockrpg-core/built/SocketIO/Auth';
 import Cookie from 'cookie';
+import http from 'http';
 import { Session } from 'blockrpg-core/built/Session';
 
 class App {
@@ -10,15 +11,17 @@ class App {
   // 该服务是否需要登录权限访问
   private auth: boolean = true;
   // 传入的http服务器
-  private server?: any;
+  private server: http.Server;
   // 创建的SocketIO服务器
-  private io?: SocketIO.Server;
+  private io: SocketIO.Server;
   // 创建的应用命名空间
-  private namespc?: SocketIO.Namespace;
+  private namespc: SocketIO.Namespace;
   // 请求的Session
   private session: string = '';
   // 当前请求的登录玩家信息
-  private player?: any;
+  private player: any;
+  // 开放给用户的回调
+  private func: (app: App) => void;
 
   public get Name(): string {
     return this.name;
@@ -26,20 +29,23 @@ class App {
   public get Auth(): boolean {
     return this.auth;
   }
-  public get Server(): any {
+  public get Server(): http.Server {
     return this.server;
   }
   public get IO(): SocketIO.Server {
-    return this.io as SocketIO.Server;
+    return this.io;
   }
   public get NameSpace(): SocketIO.Namespace {
-    return this.namespc as SocketIO.Namespace;
+    return this.namespc;
   }
   public get Session(): string {
     return this.session;
   }
   public get Player(): any {
     return this.player;
+  }
+  public get Func(): (app: App) => void {
+    return this.func;
   }
 
   // 从文本之中反序列化Cookie并读取指定键值
@@ -57,12 +63,13 @@ class App {
     this.session = this.readCookie(socket.request.headers.cookie, 'session');
     // 利用获取的Session读取登录玩家信息
     this.player = await Session.Get(this.session);
+    this.func(this);
   }
 
   // 监听（启动服务）
   public Listen(
     port: number,
-    opts: SocketIO.ServerOptions | undefined
+    opts?: SocketIO.ServerOptions,
   ): void {
     if (this.io) {
       (this.io as SocketIO.Server).listen(port, opts);
@@ -74,13 +81,15 @@ class App {
   // 构造函数
   public constructor(
     name: string = '',
+    func: (app: App) => void,
     auth: boolean = true,
-    server: any,
-    opts: SocketIO.ServerOptions | undefined
+    server?: http.Server,
+    opts?: SocketIO.ServerOptions,
   ) {
     this.name = name;
+    this.func = func;
     this.auth = auth;
-    this.server = server;
+    this.server = server || http.createServer();
     // 创建SocketIO服务
     this.io = SocketIO(this.server, opts);
     // 创建命名空间
@@ -90,3 +99,12 @@ class App {
     this.namespc.on('connection', this.Connection);
   }
 }
+
+
+
+
+const app = new App('/roam', (app) => {
+  console.log(app.Player);
+});
+
+app.Listen(3003);
