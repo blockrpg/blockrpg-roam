@@ -3,12 +3,16 @@ import { Roamer } from 'blockrpg-core/built/Model/Roamer/Entity';
 import * as RoamerBLL from 'blockrpg-core/built/Model/Roamer/BLL';
 
 const roam = new App('/roam', async (client, app) => {
-  // 获取初始Roamer信息
+  // 读取初始Roamer信息
   let curRoamer: Roamer = await RoamerBLL.getRoamerBLL(client.Player.account) as Roamer;
-  
+  // 在当前块房间内广播进入漫游消息
+  client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('otherEnter', {
+    ...client.Player,
+    ...curRoamer,
+  });
   // 玩家漫游事件
   client.Socket.on('roam', async (data) => {
-    // 构建漫步者对象
+    // 根据传递过来的参数构建漫步者对象
     const roamer = new Roamer({
       account: client.Player.account,
       x: data.x,
@@ -16,28 +20,29 @@ const roam = new App('/roam', async (client, app) => {
       dir: data.dir,
       ges: data.ges,
     });
-    console.log(roamer);
     // 缓存漫步者对象到Redis
     await RoamerBLL.updateRoamerBLL(roamer);
-    const newBlocks = roamer.CurBlockPoint.Nine;
-    const oldBlocks = curRoamer.CurBlockPoint.Nine;
-    const joinBlocks = newBlocks.filter(pt => oldBlocks.every(opt => opt.Id !== pt.Id));
-    const leaveBlocks = oldBlocks.filter(pt => newBlocks.every(npt => npt.Id !== pt.Id));
-    client.Socket.join(joinBlocks.map(block => block.Id));
-    leaveBlocks.forEach(block => {
-      client.Socket.leave(block.Id);
-    });
+    // 如果所在地图区块发生变化
+    if (roamer.CurBlockPoint.Id !== curRoamer.CurBlockPoint.Id) {
+      const newBlocks = roamer.CurBlockPoint.Nine;
+      const oldBlocks = curRoamer.CurBlockPoint.Nine;
+      const joinBlocks = newBlocks.filter(pt => oldBlocks.every(opt => opt.Id !== pt.Id));
+      const leaveBlocks = oldBlocks.filter(pt => newBlocks.every(npt => npt.Id !== pt.Id));
+      client.Socket.join(joinBlocks.map(block => block.Id));
+      leaveBlocks.forEach(block => {
+        client.Socket.leave(block.Id);
+      });
+    }
+    // 覆盖旧的漫步者对象
     curRoamer = roamer;
-    client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('roam', {
-
-    });
+    // 在当前房间内广播漫游消息
+    client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('otherRoam', curRoamer);
   });
-
   // 玩家离开事件
   // 在当前块房间内广播离开漫游消息
   client.Socket.on('disconnect', async () => {
     await RoamerBLL.syncRoamerBLL(client.Player.account);
-    client.Socket.broadcast.to('').emit('leave', client.Player.account);
+    client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('otherLeave', client.Player.account);
   });
 }, true);
 
