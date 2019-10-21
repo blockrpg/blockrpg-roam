@@ -3,14 +3,7 @@ import { Roamer } from 'blockrpg-core/built/Model/Roamer/Entity';
 import * as RoamerBLL from 'blockrpg-core/built/Model/Roamer/BLL';
 
 const roam = new App('/roam', async (client, app) => {
-
   let curRoamer: Roamer = await RoamerBLL.getRoamerBLL(client.Player.account) as Roamer;
-
-  // 玩家进入事件
-  client.Socket.on('enter', async () => {
-
-  });
-
   // 玩家漫游事件
   client.Socket.on('roam', async (data) => {
     // 构建漫步者对象
@@ -21,6 +14,7 @@ const roam = new App('/roam', async (client, app) => {
       dir: data.dir,
       ges: data.ges,
     });
+    console.log(roamer);
     // 缓存漫步者对象到Redis
     await RoamerBLL.updateRoamerBLL(roamer);
     const newBlocks = roamer.CurBlockPoint.Nine;
