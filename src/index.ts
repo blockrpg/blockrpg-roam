@@ -4,8 +4,10 @@ import * as RoamerBLL from 'blockrpg-core/built/Model/Roamer/BLL';
 
 const roam = new App('/roam', async (client, app) => {
   let curRoamer: Roamer = await RoamerBLL.getRoamerBLL(client.Player.account) as Roamer;
+  console.log('新客户端连接');
   // 玩家漫游事件
   client.Socket.on('roam', async (data) => {
+    console.log('Roam');
     // 构建漫步者对象
     const roamer = new Roamer({
       account: client.Player.account,
@@ -34,6 +36,7 @@ const roam = new App('/roam', async (client, app) => {
   // 玩家离开事件
   // 在当前块房间内广播离开漫游消息
   client.Socket.on('disconnect', async () => {
+    console.log('客户端断开连接');
     await RoamerBLL.syncRoamerBLL(client.Player.account);
     client.Socket.broadcast.to('').emit('leave', client.Player.account);
   });
