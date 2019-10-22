@@ -52,10 +52,10 @@ class RoamServer {
             account: player.Account,
             name: player.Name,
             image: player.Image,
-            x: roamer.X,
-            y: roamer.Y,
-            dir: roamer.Dir,
-            ges: roamer.Ges,
+            x: Number(roamer.X),
+            y: Number(roamer.Y),
+            dir: Number(roamer.Dir),
+            ges: Number(roamer.Ges),
           });
         }
         count++;
@@ -73,7 +73,21 @@ class RoamServer {
 
   // 在当前房间内广播玩家进入消息
   private otherEnterAction() {
-    this.Client.Socket.broadcast.to(this.CurRoamer.CurBlockPoint.Id).emit('otherEnter', {
+    setTimeout(() => {
+      this.Client.Socket.broadcast.to(this.CurRoamer.CurBlockPoint.Id).emit('otherEnter', {
+        account: this.Client.Player.Account,
+        name: this.Client.Player.Name,
+        image: this.Client.Player.Image,
+        x: this.CurRoamer.X,
+        y: this.CurRoamer.Y,
+        dir: this.CurRoamer.Dir,
+        ges: this.CurRoamer.Ges,
+      });
+    }, 500);
+  }
+  // 在当前房间内广播玩家漫游消息
+  private otherRoamAction() {
+    this.Client.Socket.broadcast.to(this.CurRoamer.CurBlockPoint.Id).emit('otherRoam', {
       account: this.Client.Player.Account,
       name: this.Client.Player.Name,
       image: this.Client.Player.Image,
@@ -82,10 +96,6 @@ class RoamServer {
       dir: this.CurRoamer.Dir,
       ges: this.CurRoamer.Ges,
     });
-  }
-  // 在当前房间内广播玩家漫游消息
-  private otherRoamAction() {
-    this.Client.Socket.broadcast.to(this.CurRoamer.CurBlockPoint.Id).emit('otherRoam', this.CurRoamer);
   }
   // 在当前房间内广播玩家离开消息
   private otherLeaveAction() {
@@ -148,15 +158,22 @@ class RoamServer {
   public async Ready(): Promise<void> {
     // 读取初始Roamer信息
     this.curRoamer = await RoamerBLL.getRoamerBLL(this.Client.Player.Account) as Roamer;
+    // 加入初始房间
+    this.Client.Socket.join(this.CurRoamer.CurBlockPoint.Nine.map((pt => pt.Id)));
     // 玩家进入房间集群
     await RoamerClusterBLL.playerEnter(this.CurRoamer.CurBlockPoint.Id, this.Client.Player);
     const actors = await this.queryActorsByPoints(this.CurRoamer.CurBlockPoint.Nine);
     this.intoViewAction(actors);
     this.otherEnterAction();
     // 玩家漫游事件
-    this.Client.Socket.on('roam', this.roamEvent);
+    this.Client.Socket.on('roam', (params) => {
+      this.roamEvent(params);
+    });
     // 玩家断开连接事件
-    this.Client.Socket.on('disconnect', this.disconnectEvent);
+    this.Client.Socket.on('disconnect', () => {
+      // console.log('Roam: 客户端断开连接');
+      this.disconnectEvent();
+    });
   }
 
   // 构造函数
@@ -170,6 +187,7 @@ class RoamServer {
 }
 
 const roam = new App('/roam', async (client, app) => {
+  // console.log('Roam: 新客户端连接');
   const server = new RoamServer(client, app);
   server.Ready();
 }, true);
