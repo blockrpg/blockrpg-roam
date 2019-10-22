@@ -4,11 +4,26 @@ import * as RoamerBLL from 'blockrpg-core/built/Model/Roamer/BLL';
 import * as RoamerClusterBLL from 'blockrpg-core/built/Model/RoamerCluster/BLL';
 import { PlayerMeta } from 'blockrpg-core/built/Model/PlayerMeta/Entity';
 
+
 const roam = new App('/roam', async (client, app) => {
+  
   // 读取初始Roamer信息
-  let curRoamer: Roamer = await RoamerBLL.getRoamerBLL(client.Player.account) as Roamer;
+  let curRoamer: Roamer = await RoamerBLL.getRoamerBLL(client.Player.Account) as Roamer;
+
   // 玩家进入集群
-  await RoamerClusterBLL.playerEnter(curRoamer.CurBlockPoint.Id, new PlayerMeta(client.Player));
+  await RoamerClusterBLL.playerEnter(curRoamer.CurBlockPoint.Id, client.Player);
+
+  const nine = curRoamer.CurBlockPoint.Nine;
+  const players: PlayerMeta[] = [];
+  for (let i = 0; i < nine.length; ++i) {
+    const id = nine[i].Id;
+    const list = await RoamerClusterBLL.queryPlayers(id);
+    players.push(...list);
+  }
+
+  // 触发其他玩家进入视野事件
+  client.Socket.emit('intoView', []);
+
   // 在当前块房间内广播进入漫游消息
   client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('otherEnter', {
     ...client.Player,
@@ -49,10 +64,12 @@ const roam = new App('/roam', async (client, app) => {
   // 玩家离开事件
   // 在当前块房间内广播离开漫游消息
   client.Socket.on('disconnect', async () => {
-    await RoamerBLL.syncRoamerBLL(client.Player.account);
+    // 同步玩家的Roam信息到数据库
+    await RoamerBLL.syncRoamerBLL(client.Player.Account);
     // 玩家离开集群
-    await RoamerClusterBLL.playerLeave(curRoamer.CurBlockPoint.Id, new PlayerMeta(client.Player));
-    client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('otherLeave', client.Player.account);
+    await RoamerClusterBLL.playerLeave(curRoamer.CurBlockPoint.Id, client.Player);
+    // 在当前房间内广播离开消息
+    client.Socket.broadcast.to(curRoamer.CurBlockPoint.Id).emit('otherLeave', client.Player.Account);
   });
 }, true);
 
