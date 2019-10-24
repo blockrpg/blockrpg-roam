@@ -136,7 +136,7 @@ export class RoamServer {
     });
     // 玩家断开连接事件
     this.Client.Socket.on('disconnect', () => {
-      console.log('Roam: 客户端断开连接');
+      // console.log('Roam: 客户端断开连接');
       this.disconnectEvent();
     });
   }
